@@ -1,0 +1,6 @@
+#include <glm/glm.hpp>
+
+struct Camera {
+	glm::vec3 position;
+	glm::vec3 rotation;
+};
