@@ -1,6 +1,7 @@
 #include <vector>
 #include "Chunk.h"
 #include "BlockDef.h"
+#include "Vertex.h"
 
 class TerrainGenerator
 {
@@ -8,6 +9,7 @@ public:
 	void LoadChunk(uint32_t x, uint32_t y, uint32_t z);
 	std::vector<Chunk> loadedChunks;
 	bool isBlockSolid(const Chunk& chunk, int x, int y, int z);
+	void generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData);
 
 	static constexpr uint8_t CHUNK_SIZE = 16;
 

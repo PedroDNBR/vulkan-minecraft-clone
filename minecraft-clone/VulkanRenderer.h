@@ -21,26 +21,25 @@
 #include "QueueFamilyIndices.h"
 #include "SwapChainSupportDetails.h"
 #include "Vertex.h"
+#include "Camera.h"
 
 class VulkanRenderer
 {
 public:
 	void run();
 	void feedMesh(std::vector<Vertex> vertexData, std::vector<uint32_t> indicesData, std::vector<const char*> texturesPathsData);
-	void updateCameraPosition(glm::vec3 newPosition);
-	void updateCameraRotation(glm::vec2 newRotation);
-	void updateCameraFront(glm::vec3 newFront);
+	void setCamera(Camera newCamera);
 	GLFWwindow* getWindow();
 
 	void initWindow();
 	void initVulkan();
-	void mainLoop(float newDeltaTime);
+	void mainLoop();
 	void finishMainLoop();
 	void cleanup();
 
+	Camera camera;
 
 private:
-	float deltaTime;
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
@@ -53,10 +52,6 @@ private:
 	const std::vector<const char*> deviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
-
-	glm::vec3 cameraPosition;
-	glm::vec2 cameraRotation;
-	glm::vec3 cameraFront;
 
 	GLFWwindow* window;
 
