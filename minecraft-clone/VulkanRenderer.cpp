@@ -9,7 +9,7 @@ void VulkanRenderer::run()
 {
 	initWindow();
 	initVulkan();
-	mainLoop();
+	mainLoop(1);
 	cleanup();
 }
 
@@ -43,9 +43,19 @@ void VulkanRenderer::updateCameraPosition(glm::vec3 newPosition)
 	cameraPosition = newPosition;
 }
 
-void VulkanRenderer::updateCameraRotation(glm::vec3 newRotation)
+void VulkanRenderer::updateCameraRotation(glm::vec2 newRotation)
 {
 	cameraRotation = newRotation;
+}
+
+void VulkanRenderer::updateCameraFront(glm::vec3 newFront)
+{
+	cameraFront = newFront;
+}
+
+GLFWwindow* VulkanRenderer::getWindow()
+{
+	return window;
 }
 
 void VulkanRenderer::initWindow()
@@ -690,8 +700,8 @@ void VulkanRenderer::createTextureSampler()
 
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -701,7 +711,7 @@ void VulkanRenderer::createTextureSampler()
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
 	samplerInfo.mipLodBias = 0.0f;
@@ -966,14 +976,15 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 
 }
 
-void VulkanRenderer::mainLoop()
+void VulkanRenderer::mainLoop(float newDeltaTime)
 {
-	while (!glfwWindowShouldClose(window))
-	{
-		glfwPollEvents();
-		drawFrame();
-	}
+	glfwPollEvents();
+	drawFrame();
+	deltaTime = newDeltaTime;
+}
 
+void VulkanRenderer::finishMainLoop()
+{
 	vkDeviceWaitIdle(device);
 }
 
@@ -1046,22 +1057,12 @@ void VulkanRenderer::drawFrame()
 
 void VulkanRenderer::updateUniformBuffer(uint32_t currentImage)
 {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
 	UniformBufferObject ubo{};
 	ubo.model = glm::mat4(1.0f);
 
-	glm::vec3 front;
-		front.x = cos(glm::radians(cameraRotation.x)) * cos(glm::radians(cameraRotation.y));
-		front.y = sin(glm::radians(cameraRotation.y));
-		front.z = sin(glm::radians(cameraRotation.x)) * cos(glm::radians(cameraRotation.y));
-
-		ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		//ubo.view = glm::lookAt(cameraPosition, cameraPosition + front, { 0,1,0 });
+	//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	//ubo.view = glm::lookAt(cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(cameraPosition, cameraPosition + cameraFront, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	ubo.proj = glm::perspective(
 		glm::radians(60.0f),
@@ -1275,7 +1276,7 @@ void VulkanRenderer::generateMipmaps(VkImage image, VkFormat imageFormat, int32_
 			image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 			image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			1, &blit,
-			VK_FILTER_LINEAR);
+			VK_FILTER_NEAREST);
 
 		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1717,9 +1718,9 @@ VkFormat VulkanRenderer::findSupportedFormat(const std::vector<VkFormat>& candid
 		VkFormatProperties props;
 		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
 
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+		/*if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
 			return format;
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+		else */if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
 			return format;
 	}
 

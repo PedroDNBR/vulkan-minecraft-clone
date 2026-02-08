@@ -28,9 +28,19 @@ public:
 	void run();
 	void feedMesh(std::vector<Vertex> vertexData, std::vector<uint32_t> indicesData, std::vector<const char*> texturesPathsData);
 	void updateCameraPosition(glm::vec3 newPosition);
-	void updateCameraRotation(glm::vec3 newRotation);
+	void updateCameraRotation(glm::vec2 newRotation);
+	void updateCameraFront(glm::vec3 newFront);
+	GLFWwindow* getWindow();
+
+	void initWindow();
+	void initVulkan();
+	void mainLoop(float newDeltaTime);
+	void finishMainLoop();
+	void cleanup();
+
 
 private:
+	float deltaTime;
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
@@ -46,6 +56,7 @@ private:
 
 	glm::vec3 cameraPosition;
 	glm::vec2 cameraRotation;
+	glm::vec3 cameraFront;
 
 	GLFWwindow* window;
 
@@ -102,8 +113,7 @@ private:
 	std::vector<uint32_t> indices;
 	std::vector<const char*> texturesPaths;
 
-	void initWindow();
-	void initVulkan();
+	
 	void setupDebugMessenger();
 	void createSurface();
 	void createInstance();
@@ -129,10 +139,8 @@ private:
 	void createDescriptorsSets();
 	void createCommandBuffers();
 	void createSyncObjects();
-	void mainLoop();
 	void drawFrame();
 	void updateUniformBuffer(uint32_t currentImage);
-	void cleanup();
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);

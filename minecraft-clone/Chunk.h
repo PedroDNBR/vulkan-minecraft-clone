@@ -1,6 +1,7 @@
 #include <glm/glm.hpp>
 #include <array>
 #include "BlockType.h"
+#include "Faces.h"
 
 struct Chunk
 {
