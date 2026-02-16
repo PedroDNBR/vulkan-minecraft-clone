@@ -1,24 +1,76 @@
 #include "TerrainGenerator.h"
 #include "Vertex.h"
+#include <glm/gtc/noise.hpp>
 
-void TerrainGenerator::LoadChunk(uint32_t cx, uint32_t cy, uint32_t cz)
+void TerrainGenerator::SetTerrainSettings(TerrainData newTerrainData)
+{
+	terrainData = newTerrainData;
+}
+
+void TerrainGenerator::LoadChunk(int32_t cx, int32_t cy, int32_t cz)
 {
     Chunk chunk;
     chunk.chunkCoord = { cx, cy, cz };
 
-    for (int x = 0; x < CHUNK_SIZE; x++) {
-        for (int z = 0; z < CHUNK_SIZE; z++) {
-            for (int y = 0; y < CHUNK_SIZE; y++) {
-                if(y == CHUNK_SIZE - 1)
-                    chunk.blocks[index(x, y, z)] = BlockType::GRASS;
-                else
-                    chunk.blocks[index(x,y,z)] = BlockType::DIRT;
-            }
+	for (int x = 0; x < CHUNK_SIZE; x++) {
+		for (int z = 0; z < CHUNK_SIZE; z++) {
+			int height;
+			int worldX = cx * CHUNK_SIZE + x;
+			int worldZ = cz * CHUNK_SIZE + z;
+			SampleHeight(worldX, worldZ, height);
+
+			for (int y = 0; y < CHUNK_SIZE; y++) {
+				int blockIndex = index(x, y, z);
+				int worldY = cy * CHUNK_SIZE + y;
+
+				if (worldY > height)
+					chunk.blocks[blockIndex] = BlockType::AIR;
+				else if (worldY == height)
+					chunk.blocks[blockIndex] = BlockType::GRASS;
+				else if (worldY >= height - terrainData.dirtDepth)
+					chunk.blocks[blockIndex] = BlockType::DIRT;
+				else
+					chunk.blocks[blockIndex] = BlockType::STONE;
+
+				CarveCaves(worldY, height, chunk, blockIndex, worldX, worldZ);
+			}
         }
     }
-    chunk.blocks[4] = BlockType::STONE;
-    chunk.blocks[6] = BlockType::AIR;
     loadedChunks.push_back(std::move(chunk));
+}
+
+void TerrainGenerator::SampleHeight(int worldX, int worldZ, int& height)
+{
+	glm::vec2 noisePosition = glm::vec2(worldX, worldZ);
+	noisePosition *= terrainData.scale;
+	noisePosition += terrainData.seedOffset;
+	float total = 0;
+	float ampli = 1;
+	float sumAmp = 0;
+	float freq = 1;
+
+	for (size_t i = 0; i < terrainData.octaves; i++)
+	{
+		total += glm::simplex(noisePosition * freq) * ampli;
+		sumAmp += ampli;
+		ampli *= .5f;
+		freq *= 2.0f;
+	}
+
+	float noise = total / sumAmp;
+	//float noise = glm::simplex(noisePosition);
+	float clampledNoise = noise * 0.5f + 0.5f;
+	height = terrainData.baseHeight + int(pow(clampledNoise, 0.3f) * terrainData.heightRange);
+}
+
+void TerrainGenerator::CarveCaves(int worldY, int height, Chunk& chunk, int blockIndex, int worldX, int worldZ)
+{
+	if (worldY < height - terrainData.startingCaveDepth && chunk.blocks[blockIndex] != BlockType::AIR)
+	{
+		float cave = glm::simplex(glm::vec3(worldX, worldY, worldZ) * terrainData.caveScale + terrainData.caveSeedOffset);
+		if (cave > terrainData.caveThreshold)
+			chunk.blocks[blockIndex] = BlockType::AIR;
+	}
 }
 
 bool TerrainGenerator::isBlockSolid(const Chunk& chunk, int x, int y, int z)

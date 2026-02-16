@@ -10,8 +10,38 @@ void Engine::start()
 
 	std::vector<const char*> texturesPaths = { "textures/tilesheet.png" };
 
-	terrainGenerator->LoadChunk(0, -1, -2);
-	terrainGenerator->generateChunkMesh(0, vertices, indices);
+	const int worldSizeX = 4;
+	const int worldSizeY = 4;
+	const int worldSizeZ = 4;
+
+	TerrainData terrainData;
+	terrainData.seed = 1;
+	terrainData.baseHeight = 64;
+	terrainData.dirtDepth = 8;
+	terrainData.startingCaveDepth = 4;
+	terrainData.caveThreshold = 0.75f;
+	terrainData.heightRange = 20;
+	terrainData.scale = 0.02f;
+	terrainData.seedOffset = 2;
+	terrainData.octaves = 4;
+	terrainData.caveScale = 0.035f;
+	terrainData.caveSeedOffset = 1.f;
+
+	terrainGenerator->SetTerrainSettings(terrainData);
+	terrainGenerator->loadedChunks.reserve(worldSizeX * worldSizeY * worldSizeZ);
+
+	for (int x = 0; x < worldSizeX; x++) {
+		for (int z = 0; z < worldSizeZ; z++) {
+			for (int y = 0; y < worldSizeY; y++) {
+				terrainGenerator->LoadChunk(x,y,z);
+			}
+		}
+	}
+
+	for (size_t i = 0; i < worldSizeX * worldSizeY * worldSizeZ; i++)
+	{
+		terrainGenerator->generateChunkMesh(i, vertices, indices);
+	}
 
 	renderer->camera = Camera();
 
@@ -113,13 +143,13 @@ void Engine::handleMouseInput()
 
 void Engine::handleCameraMovement()
 {
-	float speed = 4;
+	float speed = 8;
 
 	if (glfwGetKey(renderer->getWindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-		speed = 8;
+		speed = 16;
 
 	if (glfwGetKey(renderer->getWindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
-		speed = 4;
+		speed = 8;
 
 
 	if (glfwGetKey(renderer->getWindow(), GLFW_KEY_W) == GLFW_PRESS)

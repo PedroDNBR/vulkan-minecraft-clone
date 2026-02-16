@@ -156,6 +156,7 @@
     <ClInclude Include="Engine.h" />
     <ClInclude Include="QueueFamilyIndices.h" />
     <ClInclude Include="SwapChainSupportDetails.h" />
+    <ClInclude Include="TerrainData.h" />
     <ClInclude Include="TerrainGenerator.h" />
     <ClInclude Include="UniformBufferObject.h" />
     <ClInclude Include="Vertex.h" />

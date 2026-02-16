@@ -1,17 +1,24 @@
 #include <vector>
 #include "Chunk.h"
 #include "BlockDef.h"
+#include "TerrainData.h"
 #include "Vertex.h"
 
 class TerrainGenerator
 {
 public:
-	void LoadChunk(uint32_t x, uint32_t y, uint32_t z);
+	// TerrainGenerator(int32_t seed, int32_t baseHeight, int32_t heightAmplification, float scale, uint8_t octaves, float lacunarity, float persistence);
+	void SetTerrainSettings(TerrainData newTerrainData);
+	void LoadChunk(int32_t x, int32_t y, int32_t z);
+	void SampleHeight(int worldX, int worldZ, int& height);
+	void CarveCaves(int worldY, int height, Chunk& chunk, int blockIndex, int worldX, int worldZ);
 	std::vector<Chunk> loadedChunks;
 	bool isBlockSolid(const Chunk& chunk, int x, int y, int z);
 	void generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData);
 
-	static constexpr uint8_t CHUNK_SIZE = 16;
+	int32_t seed;
+
+	static constexpr uint8_t CHUNK_SIZE = 32;
 
 	inline int index(int x, int y, int z) {
 		return x + CHUNK_SIZE * (z + CHUNK_SIZE * y);
@@ -150,7 +157,6 @@ public:
 	//};
 
 private:
-
-	
+	TerrainData terrainData;
 };
 
