@@ -65,5 +65,11 @@
     <ClInclude Include="TerrainData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CpuMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GpuMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

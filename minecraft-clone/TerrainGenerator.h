@@ -2,7 +2,7 @@
 #include "Chunk.h"
 #include "BlockDef.h"
 #include "TerrainData.h"
-#include "Vertex.h"
+#include "CpuMesh.h"
 
 class TerrainGenerator
 {
@@ -14,14 +14,12 @@ public:
 	void CarveCaves(int worldY, int height, Chunk& chunk, int blockIndex, int worldX, int worldZ);
 	std::vector<Chunk> loadedChunks;
 	bool isBlockSolid(const Chunk& chunk, int x, int y, int z);
-	void generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData);
+	void generateChunkMesh(int32_t chunkIndex);
 
 	int32_t seed;
 
-	static constexpr uint8_t CHUNK_SIZE = 32;
-
 	inline int index(int x, int y, int z) {
-		return x + CHUNK_SIZE * (z + CHUNK_SIZE * y);
+		return x + Chunk::CHUNK_SIZE * (z + Chunk::CHUNK_SIZE * y);
 	}
 
 	const glm::vec2 tileSize = { 1.0 / 16.0, 1.0 / 16.0 };

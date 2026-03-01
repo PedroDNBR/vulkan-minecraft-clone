@@ -5,10 +5,13 @@ void Engine::start()
 	renderer = std::make_unique<VulkanRenderer>();
 	terrainGenerator = std::make_unique<TerrainGenerator>();
 
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	renderer->camera = Camera();
 
 	std::vector<const char*> texturesPaths = { "textures/tilesheet.png" };
+	renderer->uploadMeshTexture(texturesPaths);
+
+	renderer->initWindow();
+	renderer->initVulkan();
 
 	const int worldSizeX = 4;
 	const int worldSizeY = 4;
@@ -22,7 +25,7 @@ void Engine::start()
 	terrainData.caveThreshold = 0.75f;
 	terrainData.heightRange = 20;
 	terrainData.scale = 0.02f;
-	terrainData.seedOffset = 2;
+	terrainData.seed = 2;
 	terrainData.octaves = 4;
 	terrainData.caveScale = 0.035f;
 	terrainData.caveSeedOffset = 1.f;
@@ -38,21 +41,16 @@ void Engine::start()
 		}
 	}
 
-	for (size_t i = 0; i < worldSizeX * worldSizeY * worldSizeZ; i++)
+	for (size_t i = 0; i < (worldSizeX * worldSizeY * worldSizeZ); i++)
 	{
-		terrainGenerator->generateChunkMesh(i, vertices, indices);
+		terrainGenerator->generateChunkMesh(i);
+		if (terrainGenerator->loadedChunks[i].cpuMesh->vertices.size() > 0)
+		{
+			GpuMesh gpuMesh = renderer->uploadCpuMesh(*terrainGenerator->loadedChunks[i].cpuMesh);
+			terrainGenerator->loadedChunks[i].gpuMesh = &gpuMesh;
+		}
 	}
 
-	renderer->camera = Camera();
-
-	renderer->feedMesh(
-		vertices,
-		indices,
-		texturesPaths
-	);
-
-	renderer->initWindow();
-	renderer->initVulkan();
 	setupGlfwMouseInput();
 }
 

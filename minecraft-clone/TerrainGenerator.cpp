@@ -7,21 +7,21 @@ void TerrainGenerator::SetTerrainSettings(TerrainData newTerrainData)
 	terrainData = newTerrainData;
 }
 
-void TerrainGenerator::LoadChunk(int32_t cx, int32_t cy, int32_t cz)
+/*Chunk*/void TerrainGenerator::LoadChunk(int32_t cx, int32_t cy, int32_t cz)
 {
     Chunk chunk;
     chunk.chunkCoord = { cx, cy, cz };
 
-	for (int x = 0; x < CHUNK_SIZE; x++) {
-		for (int z = 0; z < CHUNK_SIZE; z++) {
+	for (int x = 0; x < Chunk::CHUNK_SIZE; x++) {
+		for (int z = 0; z < Chunk::CHUNK_SIZE; z++) {
 			int height;
-			int worldX = cx * CHUNK_SIZE + x;
-			int worldZ = cz * CHUNK_SIZE + z;
+			int worldX = cx * Chunk::CHUNK_SIZE + x;
+			int worldZ = cz * Chunk::CHUNK_SIZE + z;
 			SampleHeight(worldX, worldZ, height);
 
-			for (int y = 0; y < CHUNK_SIZE; y++) {
+			for (int y = 0; y < Chunk::CHUNK_SIZE; y++) {
 				int blockIndex = index(x, y, z);
-				int worldY = cy * CHUNK_SIZE + y;
+				int worldY = cy * Chunk::CHUNK_SIZE + y;
 
 				if (worldY > height)
 					chunk.blocks[blockIndex] = BlockType::AIR;
@@ -34,16 +34,18 @@ void TerrainGenerator::LoadChunk(int32_t cx, int32_t cy, int32_t cz)
 
 				CarveCaves(worldY, height, chunk, blockIndex, worldX, worldZ);
 			}
-        }
-    }
-    loadedChunks.push_back(std::move(chunk));
+		}
+	}
+	chunk.needUpdate = true;
+	loadedChunks.push_back(std::move(chunk));
+	//return chunk;
 }
 
 void TerrainGenerator::SampleHeight(int worldX, int worldZ, int& height)
 {
 	glm::vec2 noisePosition = glm::vec2(worldX, worldZ);
 	noisePosition *= terrainData.scale;
-	noisePosition += terrainData.seedOffset;
+	noisePosition += terrainData.seed;
 	float total = 0;
 	float ampli = 1;
 	float sumAmp = 0;
@@ -75,22 +77,24 @@ void TerrainGenerator::CarveCaves(int worldY, int height, Chunk& chunk, int bloc
 
 bool TerrainGenerator::isBlockSolid(const Chunk& chunk, int x, int y, int z)
 {
-    if(
-        x < 0 || y < 0 || z < 0 ||
-        x >= CHUNK_SIZE || y >= CHUNK_SIZE || z >= CHUNK_SIZE
-        )
-        return false;
+	if (
+		x < 0 || y < 0 || z < 0 ||
+		x >= Chunk::CHUNK_SIZE || y >= Chunk::CHUNK_SIZE || z >= Chunk::CHUNK_SIZE
+		)
+		return false;
 
-    return chunk.blocks[index(x, y, z)] != BlockType::AIR;
+	return chunk.blocks[index(x, y, z)] != BlockType::AIR;
 }
 
-void TerrainGenerator::generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>& vertexData, std::vector<uint32_t>& indicesData)
+void TerrainGenerator::generateChunkMesh(int32_t chunkIndex)
 {
-	for (uint32_t x = 0; x < CHUNK_SIZE; x++)
+	loadedChunks[chunkIndex].cpuMesh = new CpuMesh();
+
+	for (uint32_t x = 0; x < Chunk::CHUNK_SIZE; x++)
 	{
-		for (uint32_t y = 0; y < CHUNK_SIZE; y++)
+		for (uint32_t y = 0; y < Chunk::CHUNK_SIZE; y++)
 		{
-			for (uint32_t z = 0; z < CHUNK_SIZE; z++)
+			for (uint32_t z = 0; z < Chunk::CHUNK_SIZE; z++)
 			{
 				int blockIndex = index(x, y, z);
 				if (loadedChunks[chunkIndex].blocks[blockIndex] == BlockType::AIR)
@@ -104,16 +108,16 @@ void TerrainGenerator::generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>
 
 					int nIndex = index(nx, ny, nz);
 
-					if (nx < 0 || nx >= CHUNK_SIZE ||
-						ny < 0 || ny >= CHUNK_SIZE ||
-						nz < 0 || nz >= CHUNK_SIZE ||
+					if (nx < 0 || nx >= Chunk::CHUNK_SIZE ||
+						ny < 0 || ny >= Chunk::CHUNK_SIZE ||
+						nz < 0 || nz >= Chunk::CHUNK_SIZE ||
 						loadedChunks[chunkIndex].blocks[nIndex] == BlockType::AIR)
 					{
 						glm::vec3 blockWorldPos =
 							glm::vec3(x, y, z) +
-							glm::vec3(loadedChunks[chunkIndex].chunkCoord) * float(CHUNK_SIZE);
+							glm::vec3(loadedChunks[chunkIndex].chunkCoord) * float(Chunk::CHUNK_SIZE);
 
-						uint32_t startIndex = vertexData.size();
+						uint32_t startIndex = loadedChunks[chunkIndex].cpuMesh->vertices.size();
 						for (size_t v = 0; v < 4; v++)
 						{
 							glm::vec3 vertexFaces = blockWorldPos + facesVertex[f][v] * .5f;
@@ -133,7 +137,7 @@ void TerrainGenerator::generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>
 
 							glm::vec2 uvMap = (uvMaps[v] + glm::vec2(tileOffset)) * tileSize;
 
-							vertexData.push_back(
+							loadedChunks[chunkIndex].cpuMesh->vertices.push_back(
 								{
 									vertexFaces,
 									colorMultiplier,
@@ -141,17 +145,18 @@ void TerrainGenerator::generateChunkMesh(int32_t chunkIndex, std::vector<Vertex>
 								}
 							);
 						}
-						indicesData.push_back(startIndex + 0);
-						indicesData.push_back(startIndex + 1);
-						indicesData.push_back(startIndex + 2);
-						indicesData.push_back(startIndex + 2);
-						indicesData.push_back(startIndex + 3);
-						indicesData.push_back(startIndex + 0);
+						loadedChunks[chunkIndex].cpuMesh->indices.push_back(startIndex + 0);
+						loadedChunks[chunkIndex].cpuMesh->indices.push_back(startIndex + 1);
+						loadedChunks[chunkIndex].cpuMesh->indices.push_back(startIndex + 2);
+						loadedChunks[chunkIndex].cpuMesh->indices.push_back(startIndex + 2);
+						loadedChunks[chunkIndex].cpuMesh->indices.push_back(startIndex + 3);
+						loadedChunks[chunkIndex].cpuMesh->indices.push_back(startIndex + 0);
 					}
 				}
 			}
 		}
 	}
+	loadedChunks[chunkIndex].needUpdate = false;
 }
 
 //Chunk chunk;

@@ -78,8 +78,8 @@ void VulkanRenderer::initVulkan()
 	createTextureImage(0);
 	createTextureImageView();
 	createTextureSampler();
-	createVertexBuffer();
-	createIndexBuffer();
+	//createVertexBuffer();
+	//createIndexBuffer();
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorsSets();
@@ -978,16 +978,20 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-	VkBuffer vertexBuffers[] = { vertexBuffer };
-	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-	vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
+	
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	for (size_t i = 0; i < gpuMeshes.size(); i++)
+	{
+		if (gpuMeshes[i].vertexBuffer == VK_NULL_HANDLE) continue;
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &gpuMeshes[i].vertexBuffer, offsets);
+
+		vkCmdBindIndexBuffer(commandBuffer, gpuMeshes[i].indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+
+		vkCmdDrawIndexed(commandBuffer, gpuMeshes[i].indexCount, 1, 0, 0, 0);
+	}
 
 	vkCmdEndRenderPass(commandBuffer);
 
@@ -1118,11 +1122,16 @@ void VulkanRenderer::cleanup()
 
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-	vkDestroyBuffer(device, indexBuffer, nullptr);
+	/*vkDestroyBuffer(device, indexBuffer, nullptr);
 	vkFreeMemory(device, indexBufferMemory, nullptr);
 
 	vkDestroyBuffer(device, vertexBuffer, nullptr);
-	vkFreeMemory(device, vertexBufferMemory, nullptr);
+	vkFreeMemory(device, vertexBufferMemory, nullptr);*/
+
+	for (size_t i = 0; i < gpuMeshes.size(); i++)
+	{
+		destroyMesh(gpuMeshes[i]);
+	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -1144,6 +1153,96 @@ void VulkanRenderer::cleanup()
 	glfwDestroyWindow(window);
 
 	glfwTerminate();
+}
+
+GpuMesh VulkanRenderer::uploadCpuMesh(const CpuMesh& cpuMesh)
+{
+	GpuMesh gpuMesh;
+
+	gpuMesh.indexCount = cpuMesh.indices.size();
+
+	std::cout << "vertices size " << gpuMesh.indexCount << std::endl;
+	std::cout << "size of " << sizeof(cpuMesh.vertices[0]) * cpuMesh.vertices.size() << std::endl;
+
+	VkDeviceSize bufferSize = sizeof(cpuMesh.vertices[0]) * cpuMesh.vertices.size();
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory
+	);
+
+	void* data;
+	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, cpuMesh.vertices.data(), (size_t)bufferSize);
+	vkUnmapMemory(device, stagingBufferMemory);
+
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		gpuMesh.vertexBuffer,
+		gpuMesh.vertexMemory
+	);
+
+	copyBuffer(stagingBuffer, gpuMesh.vertexBuffer, bufferSize);
+
+	bufferSize = sizeof(cpuMesh.indices[0]) * gpuMesh.indexCount;
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory
+	);
+
+	vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, cpuMesh.indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(device, stagingBufferMemory);
+
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		gpuMesh.indexBuffer,
+		gpuMesh.indexMemory
+	);
+
+	copyBuffer(stagingBuffer, gpuMesh.indexBuffer, bufferSize);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+	gpuMeshes.push_back(gpuMesh);
+	cpuMeshes.push_back(cpuMesh);
+
+	return gpuMesh;
+}
+
+void VulkanRenderer::uploadMeshTexture(std::vector<const char*> texturesPathsData)
+{
+	for (size_t i = 0; i < texturesPathsData.size(); i++)
+		texturesPaths.push_back(texturesPathsData[i]);
+}
+
+void VulkanRenderer::destroyMesh(GpuMesh& gpuMesh)
+{
+	vkDestroyBuffer(device, gpuMesh.indexBuffer, nullptr);
+	vkFreeMemory(device, gpuMesh.indexMemory, nullptr);
+
+	vkDestroyBuffer(device, gpuMesh.vertexBuffer, nullptr);
+	vkFreeMemory(device, gpuMesh.vertexMemory, nullptr);
 }
 
 VkCommandBuffer VulkanRenderer::beginSingleTimeCommands()

@@ -22,12 +22,17 @@
 #include "SwapChainSupportDetails.h"
 #include "Vertex.h"
 #include "Camera.h"
+#include "CpuMesh.h"
+#include "GpuMesh.h";
 
 class VulkanRenderer
 {
 public:
 	void run();
 	void feedMesh(std::vector<Vertex> vertexData, std::vector<uint32_t> indicesData, std::vector<const char*> texturesPathsData);
+	GpuMesh uploadCpuMesh(const CpuMesh& cpuMesh);
+	void uploadMeshTexture(std::vector<const char*> texturesPathsData);
+	void destroyMesh(GpuMesh& gpuMesh);
 	void setCamera(Camera newCamera);
 	GLFWwindow* getWindow();
 
@@ -97,6 +102,9 @@ private:
 	bool frameBufferResized = false;
 	uint32_t currentFrame = 0;
 	uint32_t mipLevels;
+
+	std::vector<GpuMesh> gpuMeshes;
+	std::vector<CpuMesh> cpuMeshes;
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
