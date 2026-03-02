@@ -159,6 +159,24 @@ void TerrainGenerator::generateChunkMesh(int32_t chunkIndex)
 	loadedChunks[chunkIndex].needUpdate = false;
 }
 
+bool TerrainGenerator::isChunkVisible(const Chunk& chunk, const std::array<glm::vec4, 6>& frustumPlanes)
+{
+	glm::vec3 min = glm::vec3(chunk.chunkCoord) * (float)Chunk::CHUNK_SIZE;
+	glm::vec3 center = min + glm::vec3(Chunk::CHUNK_SIZE * 0.5f);
+
+	float radius = Chunk::CHUNK_SIZE * .4f * sqrt(3.0f);
+
+	for (size_t i = 0; i < frustumPlanes.size(); i++)
+	{
+		float distance = glm::dot(glm::vec3(frustumPlanes[i]), center) + frustumPlanes[i].w;
+
+		if (distance < -radius)
+			return false;
+	}
+
+	return true;
+}
+
 //Chunk chunk;
 //chunk.chunkCoord = { cx, cy, cz };
 //

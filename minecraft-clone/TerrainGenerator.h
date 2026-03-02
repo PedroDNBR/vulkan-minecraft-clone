@@ -15,6 +15,7 @@ public:
 	std::vector<Chunk> loadedChunks;
 	bool isBlockSolid(const Chunk& chunk, int x, int y, int z);
 	void generateChunkMesh(int32_t chunkIndex);
+	bool isChunkVisible(const Chunk& chunk, const std::array<glm::vec4, 6>& frustumPlanes);
 
 	int32_t seed;
 

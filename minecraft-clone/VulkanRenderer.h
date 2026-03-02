@@ -38,6 +38,9 @@ public:
 	void clearDrawMeshList();
 	GLFWwindow* getWindow();
 
+	glm::mat4 getCameraView();
+	glm::mat4 getCameraProjection(float fov);
+
 	void initWindow();
 	void initVulkan();
 	void mainLoop();

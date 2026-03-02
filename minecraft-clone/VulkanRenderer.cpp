@@ -67,6 +67,23 @@ GLFWwindow* VulkanRenderer::getWindow()
 	return window;
 }
 
+glm::mat4 VulkanRenderer::getCameraView()
+{
+	return glm::lookAt(camera.position, camera.position + camera.forward, glm::vec3(0.0f, 1.0f, 0.0f));
+}
+
+glm::mat4 VulkanRenderer::getCameraProjection(float fov)
+{
+	glm::mat4 proj = glm::perspective(
+		glm::radians(fov),
+		swapChainExtent.width / (float)swapChainExtent.height,
+		0.1f,
+		1000.0f
+	);
+	proj[1][1] *= -1;
+	return proj;
+}
+
 void VulkanRenderer::initWindow()
 {
 	glfwInit();
@@ -1000,6 +1017,7 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 	
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
+	std::cout << "total de malhas para renderizar " << meshToDraw.size() << std::endl;
 	for (size_t i = 0; i < meshToDraw.size(); i++)
 	{
 		if (meshToDraw[i] >= gpuMeshes.size() ||
@@ -1110,16 +1128,9 @@ void VulkanRenderer::updateUniformBuffer(uint32_t currentImage)
 
 	//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	//ubo.view = glm::lookAt(cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(camera.position, camera.position + camera.forward, glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.view = getCameraView();
 
-	ubo.proj = glm::perspective(
-		glm::radians(60.0f),
-		swapChainExtent.width / (float)swapChainExtent.height,
-		0.1f,
-		1000.0f
-	);
-
-	ubo.proj[1][1] *= -1;
+	ubo.proj = getCameraProjection(60.0f);
 	
 	memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }

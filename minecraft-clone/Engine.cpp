@@ -6,6 +6,8 @@ void Engine::start()
 	terrainGenerator = std::make_unique<TerrainGenerator>();
 
 	renderer->camera = Camera();
+	renderer->camera.position = { 0.0f, 90.0f, 0.0f };
+	renderer->camera.rotation = { 135.0f, -20.0f };
 
 	std::vector<const char*> texturesPaths = { "textures/tilesheet.png" };
 	renderer->uploadMeshTexture(texturesPaths);
@@ -68,17 +70,39 @@ void Engine::update()
 			handleMouseInput();
 		}
 
+		renderer->camera.setCameraForward();
+		renderer->camera.setCameraRight();
+
 		renderer->clearDrawMeshList();
+
+		glm::mat4 viewProjection = renderer->getCameraProjection(60.f) * renderer->getCameraView();
+		glm::mat4 viewProjTranposed = glm::transpose(viewProjection);
+
+		std::array<glm::vec4, 6> frustumPlanes{
+			viewProjTranposed[3] + viewProjTranposed[0],
+			viewProjTranposed[3] - viewProjTranposed[0],
+			viewProjTranposed[3] + viewProjTranposed[1],
+			viewProjTranposed[3] - viewProjTranposed[1],
+			viewProjTranposed[3] + viewProjTranposed[2],
+			viewProjTranposed[3] - viewProjTranposed[2],
+		};
+
+		for (size_t i = 0; i < frustumPlanes.size(); i++)
+		{
+			glm::vec3 normal = glm::vec3(frustumPlanes[i]);
+			float length = glm::length(normal);
+			if(length > 0)
+				frustumPlanes[i] /= length;
+		}
 
 		for (size_t i = 0; i < terrainGenerator->loadedChunks.size(); i++)
 		{
 			if (terrainGenerator->loadedChunks[i].gpuMeshIndex < 0) continue;
 
+			if (!terrainGenerator->isChunkVisible(terrainGenerator->loadedChunks[i], frustumPlanes)) continue;
+
 			renderer->queueMesh(terrainGenerator->loadedChunks[i].gpuMeshIndex);
 		}
-
-		renderer->camera.setCameraForward();
-		renderer->camera.setCameraRight();
 
 		renderer->mainLoop();
 	}
