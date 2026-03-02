@@ -75,7 +75,7 @@ void Engine::update()
 
 		renderer->clearDrawMeshList();
 
-		glm::mat4 viewProjection = renderer->getCameraProjection(60.f) * renderer->getCameraView();
+		glm::mat4 viewProjection = renderer->getCameraProjection(50.f) * renderer->getCameraView();
 		glm::mat4 viewProjTranposed = glm::transpose(viewProjection);
 
 		std::array<glm::vec4, 6> frustumPlanes{
