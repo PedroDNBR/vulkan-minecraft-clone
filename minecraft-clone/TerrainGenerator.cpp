@@ -88,7 +88,7 @@ bool TerrainGenerator::isBlockSolid(const Chunk& chunk, int x, int y, int z)
 
 void TerrainGenerator::generateChunkMesh(int32_t chunkIndex)
 {
-	loadedChunks[chunkIndex].cpuMesh = new CpuMesh();
+	loadedChunks[chunkIndex].cpuMesh = std::make_unique<CpuMesh>();
 
 	for (uint32_t x = 0; x < Chunk::CHUNK_SIZE; x++)
 	{

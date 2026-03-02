@@ -2,6 +2,7 @@
 #include <array>
 #include "BlockType.h"
 #include "Faces.h"
+#include <memory>
 
 class CpuMesh;
 class GpuMesh;
@@ -13,8 +14,10 @@ public:
 	static inline constexpr uint8_t CHUNK_SIZE = 32;
 	std::array<BlockType, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE> blocks;
 
-	CpuMesh* cpuMesh;
-	GpuMesh* gpuMesh;
+	static inline constexpr int32_t INVALID_MESH_HANDLE = -1;
+
+	std::unique_ptr<CpuMesh> cpuMesh;
+	int32_t gpuMeshIndex = INVALID_MESH_HANDLE;
 
 	bool needUpdate;
 };

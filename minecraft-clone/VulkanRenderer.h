@@ -30,10 +30,12 @@ class VulkanRenderer
 public:
 	void run();
 	void feedMesh(std::vector<Vertex> vertexData, std::vector<uint32_t> indicesData, std::vector<const char*> texturesPathsData);
-	GpuMesh uploadCpuMesh(const CpuMesh& cpuMesh);
+	uint32_t uploadCpuMesh(const CpuMesh& cpuMesh);
 	void uploadMeshTexture(std::vector<const char*> texturesPathsData);
-	void destroyMesh(GpuMesh& gpuMesh);
 	void setCamera(Camera newCamera);
+	void destroyMeshAndFreeMeshSlot(int32_t index);
+	void queueMesh(int32_t i);
+	void clearDrawMeshList();
 	GLFWwindow* getWindow();
 
 	void initWindow();
@@ -103,8 +105,9 @@ private:
 	uint32_t currentFrame = 0;
 	uint32_t mipLevels;
 
-	std::vector<GpuMesh> gpuMeshes;
-	std::vector<CpuMesh> cpuMeshes;
+	std::vector<std::unique_ptr<GpuMesh>> gpuMeshes;
+	std::vector<int> freeMeshSlots;
+	std::vector<uint32_t> meshToDraw;
 
 #ifdef NDEBUG
 	const bool enableValidationLayers = false;
@@ -144,6 +147,8 @@ private:
 	void createSyncObjects();
 	void drawFrame();
 	void updateUniformBuffer(uint32_t currentImage);
+
+	void destroyMesh(GpuMesh& gpuMesh);
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);

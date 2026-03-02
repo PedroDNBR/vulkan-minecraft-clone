@@ -25,7 +25,6 @@ void Engine::start()
 	terrainData.caveThreshold = 0.75f;
 	terrainData.heightRange = 20;
 	terrainData.scale = 0.02f;
-	terrainData.seed = 2;
 	terrainData.octaves = 4;
 	terrainData.caveScale = 0.035f;
 	terrainData.caveSeedOffset = 1.f;
@@ -45,10 +44,9 @@ void Engine::start()
 	{
 		terrainGenerator->generateChunkMesh(i);
 		if (terrainGenerator->loadedChunks[i].cpuMesh->vertices.size() > 0)
-		{
-			GpuMesh gpuMesh = renderer->uploadCpuMesh(*terrainGenerator->loadedChunks[i].cpuMesh);
-			terrainGenerator->loadedChunks[i].gpuMesh = &gpuMesh;
-		}
+			terrainGenerator->loadedChunks[i].gpuMeshIndex = renderer->uploadCpuMesh(*terrainGenerator->loadedChunks[i].cpuMesh);
+		else
+			terrainGenerator->loadedChunks[i].gpuMeshIndex = -1;
 	}
 
 	setupGlfwMouseInput();
@@ -70,6 +68,14 @@ void Engine::update()
 			handleMouseInput();
 		}
 
+		renderer->clearDrawMeshList();
+
+		for (size_t i = 0; i < terrainGenerator->loadedChunks.size(); i++)
+		{
+			if (terrainGenerator->loadedChunks[i].gpuMeshIndex < 0) continue;
+
+			renderer->queueMesh(terrainGenerator->loadedChunks[i].gpuMeshIndex);
+		}
 
 		renderer->camera.setCameraForward();
 		renderer->camera.setCameraRight();

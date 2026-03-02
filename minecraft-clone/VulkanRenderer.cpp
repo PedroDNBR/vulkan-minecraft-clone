@@ -43,6 +43,25 @@ void VulkanRenderer::setCamera(Camera newCamera)
 	camera = newCamera;
 }
 
+void VulkanRenderer::destroyMeshAndFreeMeshSlot(int32_t index)
+{
+	if(index < 0) return;
+	destroyMesh(*gpuMeshes[index]);
+	gpuMeshes[index] = nullptr;
+	freeMeshSlots.push_back(index);
+}
+
+void VulkanRenderer::queueMesh(int32_t i)
+{
+	if(i < 0) return;
+	meshToDraw.push_back(i);
+}
+
+void VulkanRenderer::clearDrawMeshList()
+{
+	meshToDraw.clear();
+}
+
 GLFWwindow* VulkanRenderer::getWindow()
 {
 	return window;
@@ -981,16 +1000,22 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 	
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-	for (size_t i = 0; i < gpuMeshes.size(); i++)
+	for (size_t i = 0; i < meshToDraw.size(); i++)
 	{
-		if (gpuMeshes[i].vertexBuffer == VK_NULL_HANDLE) continue;
+		if (meshToDraw[i] >= gpuMeshes.size() ||
+			gpuMeshes[meshToDraw[i]] == nullptr || 
+			gpuMeshes[meshToDraw[i]]->indexCount < 1 ||
+			gpuMeshes[meshToDraw[i]]->vertexBuffer == VK_NULL_HANDLE
+		) 
+			continue;
+
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &gpuMeshes[i].vertexBuffer, offsets);
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &gpuMeshes[meshToDraw[i]]->vertexBuffer, offsets);
 
-		vkCmdBindIndexBuffer(commandBuffer, gpuMeshes[i].indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(commandBuffer, gpuMeshes[meshToDraw[i]]->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 
-		vkCmdDrawIndexed(commandBuffer, gpuMeshes[i].indexCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, gpuMeshes[meshToDraw[i]]->indexCount, 1, 0, 0, 0);
 	}
 
 	vkCmdEndRenderPass(commandBuffer);
@@ -1130,7 +1155,7 @@ void VulkanRenderer::cleanup()
 
 	for (size_t i = 0; i < gpuMeshes.size(); i++)
 	{
-		destroyMesh(gpuMeshes[i]);
+		destroyMesh(*gpuMeshes[i]);
 	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -1155,14 +1180,11 @@ void VulkanRenderer::cleanup()
 	glfwTerminate();
 }
 
-GpuMesh VulkanRenderer::uploadCpuMesh(const CpuMesh& cpuMesh)
+uint32_t VulkanRenderer::uploadCpuMesh(const CpuMesh& cpuMesh)
 {
-	GpuMesh gpuMesh;
+	std::unique_ptr<GpuMesh> gpuMesh = std::make_unique<GpuMesh>();
 
-	gpuMesh.indexCount = cpuMesh.indices.size();
-
-	std::cout << "vertices size " << gpuMesh.indexCount << std::endl;
-	std::cout << "size of " << sizeof(cpuMesh.vertices[0]) * cpuMesh.vertices.size() << std::endl;
+	gpuMesh->indexCount = cpuMesh.indices.size();
 
 	VkDeviceSize bufferSize = sizeof(cpuMesh.vertices[0]) * cpuMesh.vertices.size();
 
@@ -1187,13 +1209,13 @@ GpuMesh VulkanRenderer::uploadCpuMesh(const CpuMesh& cpuMesh)
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT |
 		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		gpuMesh.vertexBuffer,
-		gpuMesh.vertexMemory
+		gpuMesh->vertexBuffer,
+		gpuMesh->vertexMemory
 	);
 
-	copyBuffer(stagingBuffer, gpuMesh.vertexBuffer, bufferSize);
+	copyBuffer(stagingBuffer, gpuMesh->vertexBuffer, bufferSize);
 
-	bufferSize = sizeof(cpuMesh.indices[0]) * gpuMesh.indexCount;
+	bufferSize = sizeof(cpuMesh.indices[0]) * gpuMesh->indexCount;
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
@@ -1215,19 +1237,25 @@ GpuMesh VulkanRenderer::uploadCpuMesh(const CpuMesh& cpuMesh)
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT |
 		VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		gpuMesh.indexBuffer,
-		gpuMesh.indexMemory
+		gpuMesh->indexBuffer,
+		gpuMesh->indexMemory
 	);
 
-	copyBuffer(stagingBuffer, gpuMesh.indexBuffer, bufferSize);
+	copyBuffer(stagingBuffer, gpuMesh->indexBuffer, bufferSize);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	gpuMeshes.push_back(gpuMesh);
-	cpuMeshes.push_back(cpuMesh);
+	if (freeMeshSlots.size() > 0)
+	{
+		uint32_t freeSlot = freeMeshSlots.back();
+		freeMeshSlots.pop_back();
+		gpuMeshes[freeSlot] = std::move(gpuMesh);
+		return freeSlot;
+	}
 
-	return gpuMesh;
+	gpuMeshes.push_back(std::move(gpuMesh));
+	return gpuMeshes.size() - 1;
 }
 
 void VulkanRenderer::uploadMeshTexture(std::vector<const char*> texturesPathsData)
