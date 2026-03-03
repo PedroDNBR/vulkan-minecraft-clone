@@ -71,5 +71,8 @@
     <ClInclude Include="GpuMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ChunkHash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

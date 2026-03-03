@@ -1017,7 +1017,6 @@ void VulkanRenderer::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 	
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-	std::cout << "total de malhas para renderizar " << meshToDraw.size() << std::endl;
 	for (size_t i = 0; i < meshToDraw.size(); i++)
 	{
 		if (meshToDraw[i] >= gpuMeshes.size() ||

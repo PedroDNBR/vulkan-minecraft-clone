@@ -75,7 +75,7 @@ void Engine::update()
 
 		renderer->clearDrawMeshList();
 
-		glm::mat4 viewProjection = renderer->getCameraProjection(50.f) * renderer->getCameraView();
+		glm::mat4 viewProjection = renderer->getCameraProjection(60.f) * renderer->getCameraView();
 		glm::mat4 viewProjTranposed = glm::transpose(viewProjection);
 
 		std::array<glm::vec4, 6> frustumPlanes{
@@ -99,7 +99,7 @@ void Engine::update()
 		{
 			if (terrainGenerator->loadedChunks[i].gpuMeshIndex < 0) continue;
 
-			if (!terrainGenerator->isChunkVisible(terrainGenerator->loadedChunks[i], frustumPlanes)) continue;
+			if (!terrainGenerator->isChunkVisible(terrainGenerator->loadedChunks[i].chunkCoord, frustumPlanes)) continue;
 
 			renderer->queueMesh(terrainGenerator->loadedChunks[i].gpuMeshIndex);
 		}

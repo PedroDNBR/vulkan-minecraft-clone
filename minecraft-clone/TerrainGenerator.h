@@ -3,6 +3,7 @@
 #include "BlockDef.h"
 #include "TerrainData.h"
 #include "CpuMesh.h"
+#include "ChunkHash.h"
 
 class TerrainGenerator
 {
@@ -13,9 +14,10 @@ public:
 	void SampleHeight(int worldX, int worldZ, int& height);
 	void CarveCaves(int worldY, int height, Chunk& chunk, int blockIndex, int worldX, int worldZ);
 	std::vector<Chunk> loadedChunks;
-	bool isBlockSolid(const Chunk& chunk, int x, int y, int z);
+	std::unordered_map<glm::ivec3, int, ChunkHash> loadedChunksCoordsIndex;
+	bool isNeighborBlockSolid(const glm::vec3& face, const int32_t& chunkIndex, const int32_t& x, const int32_t& y, const int32_t& z);
 	void generateChunkMesh(int32_t chunkIndex);
-	bool isChunkVisible(const Chunk& chunk, const std::array<glm::vec4, 6>& frustumPlanes);
+	bool isChunkVisible(const glm::ivec3& chunkCoord, const std::array<glm::vec4, 6>& frustumPlanes);
 
 	int32_t seed;
 
